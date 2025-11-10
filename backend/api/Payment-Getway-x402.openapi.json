@@ -1,0 +1,531 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "默认模块",
+    "description": "API implementing the X402 payment protocol for cryptocurrency transactions, supporting order creation, payment challenges, and confirmation.",
+    "version": "1.0.0"
+  },
+  "tags": [
+    {
+      "name": "Crypto For X402"
+    },
+    {
+      "name": "OpenApi/X402"
+    }
+  ],
+  "paths": {
+    "/openapi/crypto/x402/pay-methods": {
+      "get": {
+        "summary": "Retrieve Supported Payment Methods",
+        "deprecated": false,
+        "description": "Returns a list of supported blockchain networks and assets for payments.",
+        "tags": [
+          "Crypto For X402",
+          "OpenApi/X402"
+        ],
+        "parameters": [
+          {
+            "name": "Merchant-App-Key",
+            "in": "header",
+            "description": "Merchant API key for authentication",
+            "required": true,
+            "example": "merchant_key_123",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of supported payment methods",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentMethod"
+                  }
+                },
+                "examples": {
+                  "1": {
+                    "summary": "成功示例",
+                    "value": {
+                      "network": "BSC",
+                      "asset": "0x55d398326f99059fF775485246999027B3197955",
+                      "symbol": "USDT"
+                    }
+                  },
+                  "2": {
+                    "summary": "成功示例",
+                    "value": {
+                      "network": "solana-mainnet",
+                      "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                      "symbol": "USDC"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {}
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid Merchant-App-Key"
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "MerchantAppKey": []
+          }
+        ]
+      }
+    },
+    "/openapi/crypto/x402/order": {
+      "post": {
+        "summary": "Create or Confirm Order",
+        "deprecated": false,
+        "description": "Creates a payment order or confirms payment via X-PAYMENT header. Returns 402 with payment instructions if payment is required, or 200 upon successful confirmation.",
+        "tags": [
+          "Crypto For X402",
+          "OpenApi/X402"
+        ],
+        "parameters": [
+          {
+            "name": "Merchant-App-Key",
+            "in": "header",
+            "description": "Merchant API key for authentication",
+            "required": true,
+            "example": "merchant_key_123",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-PAYMENT",
+            "in": "header",
+            "description": "Base64-encoded JSON payment payload for confirmation, including x402Version, scheme, network, orderId,and payload (amount, txHash)\n{\"x402Version\":1,\"scheme\":\"exact\",\"network\":\"BSC\",\"orderId\":\"CO2025091502171350002\",\"payload\":{\"amount\":\"2600000\",\"txHash\":\"0x123..\"}}",
+            "required": false,
+            "example": "eyJ4NDAyVmVyc2lvbiI6MSwic2NoZW1lIjoiZXhhY3QiLCJuZXR3b3JrIjoiYnNjLW1haW5uZXQiLCJwYXlsb2FkIjp7ImFtb3VudCI6IjI2MDAwMDAiLCJzaWduYXR1cmUiOiIweDU1Li4iLCJ0eEhhc2giOiIweDEyMy4uIn19",
+            "schema": {
+              "type": "string",
+              "format": "base64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "description": "Optional description of the order"
+                  }
+                }
+              },
+              "example": {
+                "description": "Payment for premium subscription"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment successful, order confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orderId": {
+                      "type": "string",
+                      "description": "Unique identifier for the payment order"
+                    },
+                    "orderStatus": {
+                      "type": "string",
+                      "description": "Order status (e.g., pending, confirmed, failed)"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Human-readable status message"
+                    }
+                  },
+                  "required": [
+                    "orderId",
+                    "orderStatus",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "orderId": "CO2025091502171350002",
+                  "status": "confirmed",
+                  "message": "Payment successful"
+                }
+              }
+            },
+            "headers": {
+              "X-PAYMENT-RESPONSE": {
+                "example": "eyJzdWNjZXNzIjp0cnVlLCJ0eEhhc2giOiIweDEyMy4uIiwibmV0d29ya0lkIjoiYnNjLW1haW5uZXQifQ==",
+                "description": "Base64-encoded JSON with settlement details",
+                "schema": {
+                  "type": "string",
+                  "format": "base64"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payment or request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "description": "Error code"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Error description"
+                    },
+                    "orderId": {
+                      "type": "string",
+                      "description": "orderId, if applicable"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "error": "invalid_payment",
+                  "message": "Invalid signature or transaction hash",
+                  "orderId": "CO2025091502171350002"
+                }
+              }
+            },
+            "headers": {}
+          },
+          "402": {
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "x402Version": {
+                      "type": "integer",
+                      "description": "X402 protocol version",
+                      "example": 1
+                    },
+                    "orderId": {
+                      "type": "string",
+                      "description": "CO2025091502171350002"
+                    },
+                    "accepts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "scheme": {
+                            "type": "string",
+                            "description": "Payment scheme (e.g., exact for EVM)",
+                            "example": "exact"
+                          },
+                          "network": {
+                            "type": "string",
+                            "description": "Blockchain network ID",
+                            "example": "bsc-mainnet"
+                          },
+                          "asset": {
+                            "type": "string",
+                            "description": "Asset contract address"
+                          },
+                          "symbol": {
+                            "type": "string",
+                            "description": "Asset symbol"
+                          },
+                          "decimals": {
+                            "type": "string",
+                            "description": "Asset decimal places"
+                          },
+                          "payTo": {
+                            "type": "string",
+                            "description": "Recipient address"
+                          },
+                          "resource": {
+                            "type": "string",
+                            "description": "Resource URI for the payment"
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "Payment purpose"
+                          },
+                          "nonce": {
+                            "type": "string",
+                            "description": "Unique nonce for anti-replay"
+                          },
+                          "expires": {
+                            "type": "integer",
+                            "description": "Expiration time in seconds"
+                          }
+                        },
+                        "required": [
+                          "scheme",
+                          "network",
+                          "payTo",
+                          "asset",
+                          "resource",
+                          "symbol",
+                          "decimals"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "x402Version",
+                    "accepts",
+                    "orderId"
+                  ]
+                },
+                "example": {
+                  "x402Version": 1,
+                  "orderId": "CO2025091502171350002",
+                  "accepts": [
+                    {
+                      "scheme": "exact",
+                      "network": "BSC",
+                      "symbol": "USDT",
+                      "decimals": 6,
+                      "payTo": "0x52749b0B4417200654fa9b02d6E96f3EE77Ae75B",
+                      "asset": "0x55d398326f99059fF775485246999027B3197955",
+                      "resource": "/openapi/crypto/x402/order",
+                      "description": "Payment for order",
+                      "nonce": "abc123",
+                      "expires": 3600
+                    },
+                    {
+                      "scheme": "exact",
+                      "network": "SOLANA",
+                      "symbol": "USDT",
+                      "decimals": 6,
+                      "payTo": "5z4y...solana_address",
+                      "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                      "resource": "/openapi/crypto/x402/order",
+                      "description": "Payment for order",
+                      "nonce": "xyz789",
+                      "expires": 3600
+                    }
+                  ]
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "MerchantAppKey": []
+          },
+          {
+            "X-PAYMENT": []
+          }
+        ]
+      }
+    },
+    "/openapi/crypto/x402/order/{orderId}": {
+      "get": {
+        "summary": "Query Order Status",
+        "deprecated": false,
+        "description": "Retrieves the status of a payment order by paymentId.",
+        "tags": [
+          "Crypto For X402",
+          "OpenApi/X402"
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Merchant-App-Key",
+            "in": "header",
+            "description": "Merchant API key for authentication",
+            "required": true,
+            "example": "merchant_key_123",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orderId": {
+                      "type": "string",
+                      "description": "Unique identifier for the payment order"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Human-readable status message"
+                    },
+                    "orderStatus": {
+                      "type": "string",
+                      "description": "Order status (e.g., pending, confirmed, failed)"
+                    },
+                    "payStatus": {
+                      "type": "string",
+                      "description": "Payment Status(Not Paid, Partially Paid,Fully Paid,Over Paid)"
+                    },
+                    "paidAmount": {
+                      "type": "string",
+                      "description": "Amount paid"
+                    },
+                    "transactionFee": {
+                      "type": "string"
+                    },
+                    "gasFee": {
+                      "type": "string"
+                    },
+                    "txHash": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "orderId",
+                    "orderStatus",
+                    "message",
+                    "payStatus",
+                    "paidAmount",
+                    "transactionFee",
+                    "gasFee",
+                    "txHash"
+                  ]
+                }
+              }
+            },
+            "headers": {}
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Error description"
+                    },
+                    "orderId": {
+                      "type": "string",
+                      "description": "Payment ID, if applicable"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                },
+                "example": {
+                  "message": "Order not found"
+                }
+              }
+            },
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "MerchantAppKey": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error code"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error description"
+          },
+          "paymentId": {
+            "type": "string",
+            "description": "Payment ID, if applicable"
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ]
+      },
+      "PaymentMethod": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "description": "Blockchain network ID (e.g., bsc-mainnet, solana-mainnet)"
+          },
+          "asset": {
+            "type": "string",
+            "description": "Asset contract address or identifier"
+          },
+          "symbol": {
+            "type": "string",
+            "description": "Human-readable asset symbol"
+          }
+        },
+        "required": [
+          "network",
+          "asset"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "MerchantAppKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Merchant-App-Key",
+        "description": "Merchant API key for authentication"
+      },
+      "X-PAYMENT": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-PAYMENT",
+        "description": "Base64-encoded JSON payment payload for X402 confirmation"
+      }
+    }
+  },
+  "servers": [],
+  "security": []
+}
